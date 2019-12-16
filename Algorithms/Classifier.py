@@ -8,7 +8,8 @@ from sklearn.linear_model import SGDClassifier
 import  copy
 import pandas as pd
 import Data_Preprocessing.Sentiment_Preprocessing as sentiment_preprocessor
-from tqdm import  tqdm
+from tqdm import tqdm
+from sklearn.metrics import classification_report
 
 def bootstrap(x,y):
     training_set = np.hstack((x,y))
@@ -37,8 +38,8 @@ def process_mtg(data,bootstrapping=False):
     return X_train.flatten(), Y_train, X_test.flatten(),Y_test
 
 def Classify(X_train, Y_train, X_test, Y_test, reps, classifier, tf_idf=False, stop_word=None):
-    total_acc = 0
-    conf_matrix = np.shape((2,2))
+    cumul_preds = []
+    cumul_true = []
     for _ in tqdm(range(reps)):
         # Training
         count_vect = CountVectorizer(stop_words=stop_word)
@@ -65,18 +66,12 @@ def Classify(X_train, Y_train, X_test, Y_test, reps, classifier, tf_idf=False, s
         else:
             predictions = clf.predict(X_test_counts)
 
-        accuracy = len([1 for i in range(len(predictions)) if predictions[i] == Y_test[i]])/len(predictions)
-        total_acc += accuracy * 100
+        #accuracy = len([1 for i in range(len(predictions)) if predictions[i] == Y_test[i]])/len(predictions)
+        cumul_true.extend(Y_test)
+        cumul_preds.extend(predictions)
 
-        conf_matrix += metrics.confusion_matrix(Y_test, predictions)
 
-    # Error analysis
-    print(f"Good Negative:{conf_matrix[0][0]/(conf_matrix[0][0] + conf_matrix[0][1])}")
-    print(f"Good Positive:{conf_matrix[1][1]/(conf_matrix[1][1] + conf_matrix[1][0])}")
-    print(f"Wrong Negative:{conf_matrix[0][1]/(conf_matrix[0][0] + conf_matrix[0][1])}")
-    print(f"Wrong Positive:{conf_matrix[1][0]/(conf_matrix[1][1] + conf_matrix[1][0])}")
-    print(f"Average Naive Bayes accuracy on {reps} pass: {total_acc/reps}%")
-
+    print(classification_report(cumul_true, cumul_preds, target_names=["Negative", "Positive"]))
 
 def run_mtg_naive_bayes(reps, alphas):
     for i in alphas:
